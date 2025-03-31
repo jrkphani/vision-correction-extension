@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#3a86ff" />
+  
+  <!-- Eye shape -->
+  <ellipse cx="64" cy="64" rx="40" ry="30" fill="white" />
+  
+  <!-- Iris -->
+  <circle cx="64" cy="64" r="20" fill="#2667cc" />
+  
+  <!-- Pupil -->
+  <circle cx="64" cy="64" r="10" fill="#001233" />
+  
+  <!-- Light reflection -->
+  <circle cx="55" cy="55" r="5" fill="white" />
+  
+  <!-- Correction beams -->
+  <path d="M20 55 L50 60" stroke="white" stroke-width="3" stroke-dasharray="2" />
+  <path d="M20 73 L50 68" stroke="white" stroke-width="3" stroke-dasharray="2" />
+  <path d="M78 60 L108 55" stroke="white" stroke-width="3" stroke-dasharray="2" />
+  <path d="M78 68 L108 73" stroke="white" stroke-width="3" stroke-dasharray="2" />
+</svg>

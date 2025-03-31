@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vision Correction</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Vision Correction</h1>
+        <div class="status-section">
+            <h2>Status</h2>
+            <div id="status">Initializing...</div>
+        </div>
+        <div class="settings-section">
+            <h2>Settings</h2>
+            <div class="setting-item">
+                <label for="quality">Quality:</label>
+                <select id="quality">
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label for="screenDistance">Screen Distance (cm):</label>
+                <input type="number" id="screenDistance" min="30" max="100" value="50">
+            </div>
+            <div class="setting-item">
+                <label for="chromaticAberration">Chromatic Aberration:</label>
+                <input type="checkbox" id="chromaticAberration">
+            </div>
+        </div>
+    </div>
+    <script src="../scripts/main.js"></script>
+</body>
+</html> 

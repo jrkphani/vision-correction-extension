@@ -1,0 +1,28 @@
+{
+  "commands": {
+    "toggle-correction": {
+      "suggested_key": {
+        "default": "Alt+Shift+V"
+      },
+      "description": "Toggle vision correction on/off"
+    },
+    "start-calibration": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Start eye tracking calibration"
+    },
+    "cycle-profiles": {
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
+      "description": "Cycle through profiles"
+    },
+    "toggle-comparison": {
+      "suggested_key": {
+        "default": "Alt+Shift+A"
+      },
+      "description": "Toggle A/B comparison view"
+    }
+  }
+}

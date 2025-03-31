@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vision Correction</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../styles/popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vision Correction</h1>
+            <div class="status-section">
+                <div id="status" class="status">Initializing...</div>
+                <div id="eye-tracking-status" class="status">Checking camera...</div>
+            </div>
+        </header>
+
+        <main>
+            <section class="control-section">
+                <div class="toggle-container">
+                    <label class="switch">
+                        <input type="checkbox" id="correction-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="toggle-label">Enable Vision Correction</span>
+                </div>
+            </section>
+
+            <section class="profile-section">
+                <h2>Active Profile</h2>
+                <select id="profile-select" class="profile-select">
+                    <option value="default">Default Profile</option>
+                </select>
+                <button id="manage-profiles" class="btn secondary">Manage Profiles</button>
+            </section>
+
+            <section class="quick-settings">
+                <h2>Quick Settings</h2>
+                <div class="setting-item">
+                    <label for="quality">Quality:</label>
+                    <select id="quality">
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="screenDistance">Screen Distance (cm):</label>
+                    <input type="number" id="screenDistance" min="30" max="100" value="50">
+                </div>
+                <div class="setting-item">
+                    <label for="chromaticAberration">Chromatic Aberration:</label>
+                    <input type="checkbox" id="chromaticAberration">
+                </div>
+            </section>
+
+            <section class="actions">
+                <button id="calibrate-btn" class="btn primary">Calibrate Eye Tracking</button>
+                <button id="options-btn" class="btn secondary">Advanced Settings</button>
+            </section>
+        </main>
+
+        <footer>
+            <div class="shortcuts">
+                <p>Keyboard Shortcuts:</p>
+                <ul>
+                    <li>Toggle: Alt+Shift+V</li>
+                    <li>Calibrate: Alt+Shift+C</li>
+                    <li>Profiles: Alt+Shift+P</li>
+                    <li>Compare: Alt+Shift+A</li>
+                </ul>
+            </div>
+        </footer>
+    </div>
+    <script src="../scripts/popup.js" defer></script>
+</body>
+</html>
