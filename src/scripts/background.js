@@ -48,13 +48,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.storage.local.set({ state });
       // Send response with updated state
       sendResponse({ success: true, state });
-      break;
       
-    case 'REQUEST_CAMERA':
-      requestCamera()
-        .then(streamId => sendResponse({ success: true, streamId }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true; // Required for async response
+      // Broadcast state change to all tabs with content scripts
+      notifyContentScripts({ type: 'STATE_UPDATED', data: state });
+      break;
       
     case 'START_CALIBRATION':
       chrome.tabs.create({ 
@@ -63,47 +60,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, tabId: tab.id });
       });
       return true; // Required for async response
+    
+    case 'RELAY_TO_CONTENT':
+      // Relay messages from popup to content script
+      if (message.tabId && message.contentMessage) {
+        chrome.tabs.sendMessage(message.tabId, message.contentMessage, sendResponse);
+        return true; // Keep channel open for async response
+      }
+      break;
+      
+    default:
+      // Handle unrecognized message
+      sendResponse({ success: false, error: 'Unknown message type' });
   }
 });
-
-// Request camera access using chrome.tabCapture API
-async function requestCamera() {
-  try {
-    // Request tab capture
-    const stream = await new Promise((resolve, reject) => {
-      chrome.tabCapture.capture({
-        video: true,
-        audio: false,
-        videoConstraints: {
-          mandatory: {
-            minWidth: 640,
-            minHeight: 480,
-            maxWidth: 1280,
-            maxHeight: 720,
-            minFrameRate: 30
-          }
-        }
-      }, (stream) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else if (!stream) {
-          reject(new Error('Failed to capture tab'));
-        } else {
-          resolve(stream);
-        }
-      });
-    });
-    
-    // Get stream ID for content script
-    const streamId = stream.id;
-    stream.getTracks().forEach(track => track.stop()); // Stop the stream since we only need the ID
-    
-    return streamId;
-  } catch (error) {
-    console.error('Error requesting camera:', error);
-    throw error;
-  }
-}
 
 // Load state from storage when extension starts
 chrome.storage.local.get(['state'], (result) => {
@@ -148,3 +118,20 @@ function initializeExtension() {
 
 // Initialize the extension
 initializeExtension();
+
+/**
+ * Sends a message to all tabs with content scripts
+ */
+function notifyContentScripts(message) {
+  chrome.tabs.query({}, (tabs) => {
+    for (const tab of tabs) {
+      // Skip chrome:// and other protected URLs
+      if (tab.url && tab.url.startsWith('http')) {
+        chrome.tabs.sendMessage(tab.id, message).catch(() => {
+          // Ignore errors from tabs where content script is not running
+          console.log(`Content script not running in tab ${tab.id}`);
+        });
+      }
+    }
+  });
+}

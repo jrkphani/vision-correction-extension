@@ -149,13 +149,22 @@ class VisionCorrector {
         return true; // Required for async response
         
       case 'INITIALIZE_CAMERA':
-        this.initializeCamera(message.streamId)
-          .then(response => sendResponse(response))
-          .catch(error => sendResponse({ success: false, error: error.message }));
-        return true;
+        // No streamId needed for getDisplayMedia approach
+        this.initializeCamera()
+          .then(response => {
+            console.log('Camera initialization response:', response);
+            sendResponse(response);
+          })
+          .catch(error => {
+            console.error('Camera initialization error:', error);
+            sendResponse({ success: false, error: error.message });
+          });
+        return true; // Required for async response
         
       default:
-        break;
+        // Send a response even for unhandled messages
+        sendResponse({ success: false, error: 'Unhandled message type: ' + message.type });
+        return true;
     }
   }
   
@@ -238,7 +247,10 @@ class VisionCorrector {
 
       console.log('Requesting camera permission...');
       
-      // Request camera permissions with proper error handling
+      // First, explicitly request camera permission from the browser
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      
+      // Then proceed with the actual camera setup with specific constraints
       const constraints = {
         video: {
           width: { ideal: 1280 },
@@ -934,47 +946,84 @@ class VisionCorrector {
     });
   }
 
-  async initializeCamera(streamId) {
+  async initializeCamera() {
     try {
-      // Get media stream using the streamId
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          mandatory: {
-            chromeMediaSource: 'tab',
-            chromeMediaSourceId: streamId
-          }
-        }
+      console.log('Initializing camera with getDisplayMedia...');
+      
+      // Check if we're in a secure context
+      if (!window.isSecureContext) {
+        throw new Error('Camera access requires a secure context (HTTPS or localhost)');
+      }
+
+      // Check if getDisplayMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Your browser does not support getDisplayMedia');
+      }
+      
+      // Use navigator.mediaDevices.getDisplayMedia which shows a clear permission UI
+      console.log('Requesting display media access...');
+      this.cameraStream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: true,
+        audio: false
       });
       
-      // Create and set up video element
-      this.cameraVideo = document.createElement('video');
-      this.cameraVideo.id = 'vision-correction-camera';
-      this.cameraVideo.style.position = 'fixed';
-      this.cameraVideo.style.top = '0';
-      this.cameraVideo.style.left = '0';
-      this.cameraVideo.style.width = '1px';
-      this.cameraVideo.style.height = '1px';
-      this.cameraVideo.style.opacity = '0.01';
-      this.cameraVideo.style.pointerEvents = 'none';
-      this.cameraVideo.autoplay = true;
-      this.cameraVideo.playsInline = true;
+      console.log('Display media access granted');
       
-      // Wait for video to be ready
+      // Create or reuse video element for camera feed
+      if (!this.cameraVideo) {
+        console.log('Creating new video element');
+        this.cameraVideo = document.createElement('video');
+        this.cameraVideo.id = 'vision-correction-camera';
+        this.cameraVideo.style.position = 'fixed';
+        this.cameraVideo.style.top = '0';
+        this.cameraVideo.style.left = '0';
+        this.cameraVideo.style.width = '1px';  // Minimal size but still active
+        this.cameraVideo.style.height = '1px';
+        this.cameraVideo.style.opacity = '0.01';  // Nearly invisible but still active
+        this.cameraVideo.style.pointerEvents = 'none';
+        this.cameraVideo.autoplay = true;
+        this.cameraVideo.playsInline = true;
+        
+        document.body.appendChild(this.cameraVideo);
+      }
+      
+      // Set the stream to the video element
+      console.log('Setting stream to video element');
+      this.cameraVideo.srcObject = this.cameraStream;
+      
+      // Wait for the video to be ready
+      console.log('Waiting for video to be ready...');
       await new Promise((resolve, reject) => {
         this.cameraVideo.onloadedmetadata = () => {
+          console.log('Video metadata loaded, playing video...');
           this.cameraVideo.play().then(resolve).catch(reject);
         };
-        this.cameraVideo.onerror = () => reject(new Error('Failed to initialize video stream'));
+        this.cameraVideo.onerror = (e) => {
+          console.error('Video error:', e);
+          reject(new Error('Failed to initialize video stream'));
+        };
+        
+        // Add a timeout in case the metadata never loads
+        setTimeout(() => {
+          console.warn('Video metadata load timeout');
+          reject(new Error('Video metadata load timeout'));
+        }, 5000);
       });
       
-      document.body.appendChild(this.cameraVideo);
-      this.cameraVideo.srcObject = stream;
-      this.cameraStream = stream;
+      // Set up track end event listener to detect when user stops sharing
+      this.cameraStream.getVideoTracks().forEach(track => {
+        track.onended = () => {
+          console.log('Video track ended, user stopped sharing');
+          // Clean up resources
+          if (this.cameraVideo) {
+            this.cameraVideo.srcObject = null;
+          }
+        };
+      });
       
-      // Initialize eye tracking
-      await this.initializeEyeTracking();
-      
+      console.log('Camera initialized successfully');
       return { success: true };
+      
     } catch (error) {
       console.error('Error initializing camera:', error);
       return { success: false, error: error.message };

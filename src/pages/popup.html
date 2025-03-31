@@ -12,6 +12,7 @@
             <div class="status-section">
                 <div id="status" class="status">Initializing...</div>
                 <div id="eye-tracking-status" class="status">Checking camera...</div>
+                <div id="status-text" class="status-text">Ready</div>
             </div>
         </header>
 
@@ -31,17 +32,54 @@
                 <select id="profile-select" class="profile-select">
                     <option value="default">Default Profile</option>
                 </select>
-                <button id="manage-profiles" class="btn secondary">Manage Profiles</button>
+                <div class="profile-buttons">
+                    <button id="edit-profile" class="btn secondary">Edit Profile</button>
+                    <button id="new-profile" class="btn primary">New Profile</button>
+                    <button id="manage-profiles" class="btn secondary">Manage Profiles</button>
+                </div>
             </section>
 
-            <section class="quick-settings">
-                <h2>Quick Settings</h2>
+            <section class="camera-section">
+                <h2>Camera Settings</h2>
+                <div class="camera-select-container">
+                    <label for="camera-select">Select Camera:</label>
+                    <select id="camera-select" class="camera-select">
+                        <option value="">Loading cameras...</option>
+                    </select>
+                </div>
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span>Calibration:</span>
+                        <div id="calibration-status" class="status">Not calibrated</div>
+                    </div>
+                    <div class="status-item">
+                        <span>Light Level:</span>
+                        <div id="light-level-status" class="status">Checking...</div>
+                    </div>
+                </div>
+                <button id="calibrate-btn" class="btn primary">Calibrate Eye Tracking</button>
+            </section>
+
+            <section class="adjustment-section">
+                <h2>Image Adjustments</h2>
+                <div class="slider-container">
+                    <label for="sharpness-slider">Sharpness Enhancement:</label>
+                    <input type="range" id="sharpness-slider" min="0" max="100" value="50">
+                </div>
+                <div class="slider-container">
+                    <label for="contrast-slider">Contrast Enhancement:</label>
+                    <input type="range" id="contrast-slider" min="0" max="100" value="50">
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2>Additional Settings</h2>
                 <div class="setting-item">
                     <label for="quality">Quality:</label>
                     <select id="quality">
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
                         <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -49,29 +87,78 @@
                     <input type="number" id="screenDistance" min="30" max="100" value="50">
                 </div>
                 <div class="setting-item">
-                    <label for="chromaticAberration">Chromatic Aberration:</label>
-                    <input type="checkbox" id="chromaticAberration">
+                    <label for="chromaticAberration">
+                        <input type="checkbox" id="chromaticAberration" checked>
+                        Enable Chromatic Aberration Correction
+                    </label>
                 </div>
-            </section>
-
-            <section class="actions">
-                <button id="calibrate-btn" class="btn primary">Calibrate Eye Tracking</button>
                 <button id="options-btn" class="btn secondary">Advanced Settings</button>
             </section>
-        </main>
 
-        <footer>
-            <div class="shortcuts">
-                <p>Keyboard Shortcuts:</p>
-                <ul>
-                    <li>Toggle: Alt+Shift+V</li>
-                    <li>Calibrate: Alt+Shift+C</li>
-                    <li>Profiles: Alt+Shift+P</li>
-                    <li>Compare: Alt+Shift+A</li>
-                </ul>
-            </div>
-        </footer>
+            <footer>
+                <a href="#" id="options-link">Advanced Settings</a>
+            </footer>
+        </main>
     </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Edit Profile</h2>
+                <span id="close-modal" class="close">&times;</span>
+            </div>
+            <form id="profile-form">
+                <div class="form-group">
+                    <label for="profile-name">Profile Name:</label>
+                    <input type="text" id="profile-name" required>
+                </div>
+                
+                <div class="form-section">
+                    <h3>Left Eye</h3>
+                    <div class="form-group">
+                        <label for="left-sphere">Sphere:</label>
+                        <input type="number" id="left-sphere" step="0.25" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="left-cylinder">Cylinder:</label>
+                        <input type="number" id="left-cylinder" step="0.25" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="left-axis">Axis:</label>
+                        <input type="number" id="left-axis" min="0" max="180" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Right Eye</h3>
+                    <div class="form-group">
+                        <label for="right-sphere">Sphere:</label>
+                        <input type="number" id="right-sphere" step="0.25" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="right-cylinder">Cylinder:</label>
+                        <input type="number" id="right-cylinder" step="0.25" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="right-axis">Axis:</label>
+                        <input type="number" id="right-axis" min="0" max="180" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="pd">Pupillary Distance (mm):</label>
+                    <input type="number" id="pd" min="50" max="80" required>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="cancel-btn" class="btn secondary">Cancel</button>
+                    <button type="submit" class="btn primary">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="../scripts/popup.js" defer></script>
 </body>
 </html>

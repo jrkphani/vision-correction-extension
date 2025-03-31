@@ -27,7 +27,21 @@ document.addEventListener('DOMContentLoaded', () => {
     optionsLink: document.getElementById('options-link'),
     qualitySelect: document.getElementById('quality'),
     screenDistanceInput: document.getElementById('screenDistance'),
-    chromaticAberrationToggle: document.getElementById('chromaticAberration')
+    chromaticAberrationToggle: document.getElementById('chromaticAberration'),
+    // Add modal elements
+    profileModal: document.getElementById('profile-modal'),
+    modalTitle: document.getElementById('modal-title'),
+    profileForm: document.getElementById('profile-form'),
+    closeModal: document.getElementById('close-modal'),
+    cancelBtn: document.getElementById('cancel-btn'),
+    profileNameInput: document.getElementById('profile-name'),
+    leftSphereInput: document.getElementById('left-sphere'),
+    leftCylinderInput: document.getElementById('left-cylinder'),
+    leftAxisInput: document.getElementById('left-axis'),
+    rightSphereInput: document.getElementById('right-sphere'),
+    rightCylinderInput: document.getElementById('right-cylinder'),
+    rightAxisInput: document.getElementById('right-axis'),
+    pdInput: document.getElementById('pd')
   };
 
   // Verify all required elements are present
@@ -37,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (missingElements.length > 0) {
     console.error('Missing required DOM elements:', missingElements);
-    updateStatus('Error: UI initialization failed', true);
+    updateStatus('Error: UI initialization failed', true, elements);
     return;
   }
 
@@ -271,21 +285,34 @@ function updateUI(elements) {
   if (!state) return;
   
   // Update toggle state
-  elements.correctionToggle.checked = state.enabled;
-  elements.statusText.textContent = state.enabled ? 'Correction ON' : 'Correction OFF';
+  if (elements.correctionToggle) {
+    elements.correctionToggle.checked = state.enabled;
+  }
+  
+  if (elements.statusText) {
+    elements.statusText.textContent = state.enabled ? 'Correction ON' : 'Correction OFF';
+  }
   
   // Update profile selector
   updateProfileSelector(elements);
   
   // Update sliders
-  elements.sharpnessSlider.value = state.settings.sharpnessEnhancement * 100;
-  elements.contrastSlider.value = state.settings.contrastEnhancement * 100;
+  if (elements.sharpnessSlider) {
+    elements.sharpnessSlider.value = state.settings.sharpnessEnhancement * 100;
+  }
+  
+  if (elements.contrastSlider) {
+    elements.contrastSlider.value = state.settings.contrastEnhancement * 100;
+  }
   
   // Update status indicators
   updateStatusIndicators(elements);
 }
 
 function updateProfileSelector(elements) {
+  // If profileSelect element doesn't exist or state/profiles not initialized, return
+  if (!elements.profileSelect || !state || !state.profiles) return;
+  
   // Clear existing options
   elements.profileSelect.innerHTML = '';
   
@@ -298,22 +325,28 @@ function updateProfileSelector(elements) {
   });
   
   // Select the active profile
-  elements.profileSelect.value = state.activeProfile;
+  if (state.activeProfile) {
+    elements.profileSelect.value = state.activeProfile;
+  }
 }
 
 function updateStatusIndicators(elements) {
   // Update eye tracking status
-  elements.eyeTrackingStatus.textContent = state.enabled ? 'Active' : 'Inactive';
-  elements.eyeTrackingStatus.className = 'status ' + (state.enabled ? 'active' : 'inactive');
+  if (elements.eyeTrackingStatus) {
+    elements.eyeTrackingStatus.textContent = state.enabled ? 'Active' : 'Inactive';
+    elements.eyeTrackingStatus.className = 'status ' + (state.enabled ? 'active' : 'inactive');
+  }
   
   // Update calibration status
-  if (state.calibration.completed) {
-    const lastCalDate = new Date(state.calibration.lastCalibrationDate);
-    elements.calibrationStatus.textContent = lastCalDate.toLocaleDateString();
-    elements.calibrationStatus.className = 'status active';
-  } else {
-    elements.calibrationStatus.textContent = 'Never';
-    elements.calibrationStatus.className = 'status inactive';
+  if (elements.calibrationStatus) {
+    if (state.calibration && state.calibration.completed) {
+      const lastCalDate = new Date(state.calibration.lastCalibrationDate);
+      elements.calibrationStatus.textContent = lastCalDate.toLocaleDateString();
+      elements.calibrationStatus.className = 'status active';
+    } else {
+      elements.calibrationStatus.textContent = 'Never';
+      elements.calibrationStatus.className = 'status inactive';
+    }
   }
 }
 
@@ -599,36 +632,166 @@ async function updateState(changes) {
 }
 
 /**
+ * Check if the URL allows content scripts to run
+ */
+function isValidContentScriptTarget(url) {
+  // Content scripts can't run on these URLs
+  if (!url) return false;
+  
+  const invalidProtocols = [
+    'chrome://', 
+    'chrome-extension://', 
+    'chrome-search://',
+    'chrome-devtools://',
+    'devtools://',
+    'about:',
+    'data:',
+    'file:'
+  ];
+  
+  return !invalidProtocols.some(protocol => url.startsWith(protocol));
+}
+
+/**
+ * Dynamically injects the content script into the current tab
+ */
+async function injectContentScript(tabId) {
+  console.log('Injecting content script into tab:', tabId);
+  try {
+    // Check if we have scripting permission
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['scripts/content.js']
+    });
+    
+    // Wait for script to initialize
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('Content script injected successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to inject content script:', error);
+    return false;
+  }
+}
+
+/**
+ * Sends a message to a content script via the background script relay
+ */
+async function sendMessageToContentScript(tabId, message) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({
+      type: 'RELAY_TO_CONTENT',
+      tabId: tabId,
+      contentMessage: message
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
+/**
  * Check camera status and request permissions if needed
  */
 async function checkCameraStatus(elements) {
   try {
     updateStatus('Requesting camera access...', false, elements);
+    console.log('Checking if content script is loaded...');
     
-    // Request camera through background script
-    const response = await sendMessage({ type: 'REQUEST_CAMERA' });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to access camera');
-    }
-    
-    // Initialize camera in active tab
+    // First check if the content script is loaded by pinging it
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) {
       throw new Error('No active tab found');
     }
     
-    // Send stream ID to content script
-    await chrome.tabs.sendMessage(tab.id, {
-      type: 'INITIALIZE_CAMERA',
-      streamId: response.streamId
-    });
+    // Check if the current tab allows content scripts
+    if (!isValidContentScriptTarget(tab.url)) {
+      throw new Error('This page doesn\'t support eye tracking. Please open a regular web page.');
+    }
     
+    let contentScriptActive = false;
+    
+    try {
+      // Try to ping the content script
+      console.log('Pinging content script...');
+      
+      // First try direct messaging
+      try {
+        const pingResponse = await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
+        if (pingResponse && pingResponse.status === 'alive') {
+          contentScriptActive = true;
+        }
+      } catch (directError) {
+        console.log('Direct ping failed, trying relay:', directError);
+        
+        // If direct fails, try relay through background
+        try {
+          const relayResponse = await sendMessageToContentScript(tab.id, { type: 'PING' });
+          if (relayResponse && relayResponse.status === 'alive') {
+            contentScriptActive = true;
+          }
+        } catch (relayError) {
+          console.error('Relay ping also failed:', relayError);
+        }
+      }
+    } catch (pingError) {
+      console.error('Content script ping failed:', pingError);
+      console.log('Attempting to inject content script...');
+    }
+    
+    // If content script is not responding, try to inject it
+    if (!contentScriptActive) {
+      const injected = await injectContentScript(tab.id);
+      if (!injected) {
+        throw new Error('Failed to initialize eye tracking. Please refresh the page and try again.');
+      }
+      
+      // Wait a moment for the script to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try ping one more time
+      try {
+        const pingResponse = await chrome.tabs.sendMessage(tab.id, { type: 'PING' });
+        if (!pingResponse || pingResponse.status !== 'alive') {
+          throw new Error('Content script not responding after injection');
+        }
+      } catch (error) {
+        throw new Error('Content script failed to initialize. Please refresh the page.');
+      }
+    }
+    
+    // Now that we know the content script is available, request camera access
+    console.log('Sending INITIALIZE_CAMERA message to content script...');
+    let response;
+    
+    try {
+      // Try direct message first
+      response = await chrome.tabs.sendMessage(tab.id, { type: 'INITIALIZE_CAMERA' });
+    } catch (directError) {
+      console.log('Direct message failed, trying relay');
+      // Fall back to relay if direct fails
+      response = await sendMessageToContentScript(tab.id, { type: 'INITIALIZE_CAMERA' });
+    }
+    
+    // Check response
+    if (!response) {
+      throw new Error('No response from content script');
+    }
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to access camera');
+    }
+    
+    console.log('Camera initialization successful');
     updateStatus('Camera initialized', false, elements);
     return true;
   } catch (error) {
     console.error('Camera initialization error:', error);
-    updateStatus('Camera access failed', true, elements);
+    updateStatus('Camera access failed: ' + error.message, true, elements);
     return false;
   }
 }
@@ -637,14 +800,24 @@ async function checkCameraStatus(elements) {
  * Update status display
  */
 function updateStatus(message, isError, elements) {
+  // Check if elements object exists
+  if (!elements) return;
+  
+  // Update status element if it exists
   if (elements.statusElement) {
     elements.statusElement.textContent = message;
     elements.statusElement.className = 'status ' + (isError ? 'error' : 'success');
   }
   
+  // Update eye tracking status if it exists
   if (elements.eyeTrackingStatus) {
     elements.eyeTrackingStatus.textContent = isError ? 'Camera unavailable' : 'Camera ready';
     elements.eyeTrackingStatus.className = 'status ' + (isError ? 'error' : 'success');
+  }
+  
+  // Update status text if it exists
+  if (elements.statusText) {
+    elements.statusText.textContent = isError ? 'Error: ' + message : message;
   }
 }
 
